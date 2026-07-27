@@ -1,0 +1,24 @@
+Guidance, Navigation, and Control
+
+This repository contains independently written software and documentation, as
+well as code or concepts derived from publicly available Sun Devil Rocketry
+repositories.
+
+Relevant upstream projects include:
+
+- SunDevilRocketry/Flight-Computer-Firmware
+- SunDevilRocketry/mod
+- SunDevilRocketry/driver
+- SunDevilRocketry/lib
+
+Exact source revisions used during initial repository development are recorded
+in:
+
+    upstream/sdr-rev2/SOURCE_REVISIONS.txt
+
+Files copied or substantially derived from upstream source must preserve their
+original copyright and license notices.
+
+Sun Devil Rocketry application code, private flight data, credentials,
+generated files, and unrelated board-specific systems are not intended to be
+included in the portable GNC core.

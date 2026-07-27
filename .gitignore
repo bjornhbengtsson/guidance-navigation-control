@@ -1,0 +1,27 @@
+# Build output
+build/
+coverage/
+*.o
+*.a
+*.exe
+*.gcda
+*.gcno
+*.gcov
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated test output
+tests/results/

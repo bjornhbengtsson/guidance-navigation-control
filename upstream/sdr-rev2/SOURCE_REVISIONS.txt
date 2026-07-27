@@ -1,0 +1,19 @@
+Sun Devil Rocketry source revisions captured for the initial GNC workspace.
+
+Flight-Computer-Firmware:
+4a0a0f07eb7178377539a84d1c86b98813fc0cd7
+
+mod:
+3b91d66ba6f433adecaecf0fbf46054955b606aa
+
+driver:
+8091bc52b8477477ff8f05439f4f3c0e90582816
+
+lib:
+329661c209c264c96f162741d5776e7433ee4fa9
+
+Active mod branch at capture:
+feature/mekf-attitude-filter
+
+Current mod checkpoint:
+3b91d66 Start MEKF state and initialization
