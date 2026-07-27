@@ -1,0 +1,17 @@
+# Normalize text files in Git and use LF for source/build files.
+* text=auto
+
+*.c text eol=lf
+*.h text eol=lf
+Makefile text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+
+# Treat common binary files as binary.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.zip binary

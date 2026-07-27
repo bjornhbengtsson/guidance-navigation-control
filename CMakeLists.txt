@@ -12,10 +12,45 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 enable_testing()
 
-add_library(gnc INTERFACE)
+add_library(
+    gnc
+    STATIC
+        src/math/vector3.c
+        src/math/quaternion.c
+)
 
 target_include_directories(
     gnc
-    INTERFACE
+    PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+if(MSVC)
+    target_compile_options(gnc PRIVATE /W4 /WX)
+else()
+    target_compile_options(
+        gnc
+        PRIVATE
+            -Wall
+            -Wextra
+            -Wpedantic
+            -Werror
+    )
+endif()
+
+add_executable(
+    test_math
+    tests/unit/test_math.c
+)
+
+target_link_libraries(
+    test_math
+    PRIVATE
+        gnc
+        m
+)
+
+add_test(
+    NAME portable_math
+    COMMAND test_math
 )
