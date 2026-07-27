@@ -9,27 +9,36 @@ CFLAGS := \
     -Iinclude
 
 BUILD_DIR := build
-TEST_BINARY := $(BUILD_DIR)/test_math
+MATH_TEST_BINARY := $(BUILD_DIR)/test_math
+MAHONY_TEST_BINARY := $(BUILD_DIR)/test_mahony
 
 MATH_SOURCES := \
     src/math/vector3.c \
     src/math/quaternion.c
 
-TEST_SOURCES := \
-    tests/unit/test_math.c
+MAHONY_SOURCES := \
+    src/attitude/mahony.c
 
-.PHONY: all test clean
+.PHONY: all test test-math test-mahony clean
 
 all: test
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(TEST_BINARY): $(MATH_SOURCES) $(TEST_SOURCES) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(MATH_SOURCES) $(TEST_SOURCES) -lm -o $(TEST_BINARY)
+$(MATH_TEST_BINARY): $(MATH_SOURCES) tests/unit/test_math.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(MATH_SOURCES) tests/unit/test_math.c -lm -o $(MATH_TEST_BINARY)
 
-test: $(TEST_BINARY)
-	./$(TEST_BINARY)
+$(MAHONY_TEST_BINARY): $(MATH_SOURCES) $(MAHONY_SOURCES) tests/unit/test_mahony.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(MATH_SOURCES) $(MAHONY_SOURCES) tests/unit/test_mahony.c -lm -o $(MAHONY_TEST_BINARY)
+
+test-math: $(MATH_TEST_BINARY)
+	./$(MATH_TEST_BINARY)
+
+test-mahony: $(MAHONY_TEST_BINARY)
+	./$(MAHONY_TEST_BINARY)
+
+test: test-math test-mahony
 
 clean:
 	rm -rf $(BUILD_DIR)

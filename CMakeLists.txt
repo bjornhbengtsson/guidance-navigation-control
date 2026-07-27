@@ -17,6 +17,7 @@ add_library(
     STATIC
         src/math/vector3.c
         src/math/quaternion.c
+        src/attitude/mahony.c
 )
 
 target_include_directories(
@@ -53,4 +54,21 @@ target_link_libraries(
 add_test(
     NAME portable_math
     COMMAND test_math
+)
+
+add_executable(
+    test_mahony
+    tests/unit/test_mahony.c
+)
+
+target_link_libraries(
+    test_mahony
+    PRIVATE
+        gnc
+        m
+)
+
+add_test(
+    NAME portable_mahony
+    COMMAND test_mahony
 )
