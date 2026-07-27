@@ -18,6 +18,7 @@ add_library(
         src/math/vector3.c
         src/math/quaternion.c
         src/attitude/mahony.c
+        src/attitude/mekf.c
 )
 
 target_include_directories(
@@ -71,4 +72,21 @@ target_link_libraries(
 add_test(
     NAME portable_mahony
     COMMAND test_mahony
+)
+
+add_executable(
+    test_mekf
+    tests/unit/test_mekf.c
+)
+
+target_link_libraries(
+    test_mekf
+    PRIVATE
+        gnc
+        m
+)
+
+add_test(
+    NAME portable_mekf_initialization
+    COMMAND test_mekf
 )
