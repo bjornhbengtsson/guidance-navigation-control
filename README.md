@@ -199,6 +199,121 @@ The nominal state contains:
 
 The `6 × 6` covariance represents uncertainty in the local attitude error and gyro-bias error, not uncertainty in the four quaternion components directly.
 
+### MEKF Variable Reference
+
+The equations below use standard MEKF notation. The following table connects each mathematical symbol to the corresponding variable or array in the C implementation.
+
+#### Nominal State and Error State
+
+| Symbol | Variable in code | Real name and meaning |
+|---|---|---|
+| `q` | `filter->attitude` | Nominal body-to-world attitude quaternion |
+| `q⁺` | `filter->attitude` after correction | Corrected nominal attitude carried into the next timestep |
+| `q⁻` | `predicted_attitude` | Attitude predicted from the gyroscope before accelerometer correction |
+| `b̂g` | `filter->gyro_bias_rad_s` | Estimated body-frame gyroscope bias in radians per second |
+| `b̂g⁺` | `corrected_bias` | Gyroscope-bias estimate after an accepted accelerometer update |
+| `δx` | `error_state[MEKF_ERROR_STATE_DIM]` | Six-element estimated local error state |
+| `δθ̂` | `error_state[0]` through `error_state[2]` | Estimated small-angle attitude correction about body X, Y, and Z |
+| `δb̂` | `error_state[3]` through `error_state[5]` | Estimated gyroscope-bias correction about body X, Y, and Z |
+| `δq` | `delta_attitude` | Incremental quaternion produced by gyroscope integration |
+| `δq̂` | `correction_quaternion` | Quaternion constructed from the estimated small-angle attitude correction |
+
+The six error-state indices are:
+
+| Mathematical state | Code index |
+|---|---|
+| `δθx` | `MEKF_ATTITUDE_ERROR_X` |
+| `δθy` | `MEKF_ATTITUDE_ERROR_Y` |
+| `δθz` | `MEKF_ATTITUDE_ERROR_Z` |
+| `δbx` | `MEKF_GYRO_BIAS_ERROR_X` |
+| `δby` | `MEKF_GYRO_BIAS_ERROR_Y` |
+| `δbz` | `MEKF_GYRO_BIAS_ERROR_Z` |
+
+#### Gyroscope Prediction Variables
+
+| Symbol | Variable in code | Real name and meaning |
+|---|---|---|
+| `ωm` | `gyro_body_rad_s` | Measured body-frame angular velocity from the gyroscope |
+| `ω̂` | `corrected_gyro_rad_s` | Bias-corrected body-frame angular velocity |
+| `Δt` | `delta_time_s` | Prediction timestep in seconds |
+| `Δθ` | `rotation_vector_rad` | Incremental body-frame rotation vector over the timestep |
+| `||Δθ||` | `rotation_magnitude_rad` | Magnitude of the incremental rotation in radians |
+| `Φ` | `state_transition` | `6 × 6` discrete error-state transition matrix |
+| `ΦP` | `transition_covariance` | Intermediate result from multiplying the transition matrix by covariance |
+| `P⁻` | `predicted_covariance` | Covariance after gyroscope prediction and process-noise addition |
+| `P⁺` | `filter->covariance` before prediction | Corrected covariance from the previous estimator cycle |
+
+#### Covariance and Process-Noise Variables
+
+| Symbol | Variable in code | Real name and meaning |
+|---|---|---|
+| `P` | `filter->covariance` | Stored `6 × 6` error-state covariance |
+| `Pθθ` | `filter->covariance[0..2][0..2]` | Attitude-error covariance block |
+| `Pθb` | `filter->covariance[0..2][3..5]` | Attitude-to-bias cross-covariance block |
+| `Pbθ` | `filter->covariance[3..5][0..2]` | Bias-to-attitude cross-covariance block |
+| `Pbb` | `filter->covariance[3..5][3..5]` | Gyroscope-bias covariance block |
+| `σg` | `filter->config.gyro_noise_density_rad_s_sqrt_hz` | Continuous gyroscope white-noise density |
+| `σ²g` | `gyro_noise_variance` | Gyroscope white-noise density squared |
+| `σb` | `filter->config.gyro_bias_random_walk_rad_s2_sqrt_hz` | Continuous gyroscope-bias random-walk density |
+| `σ²b` | `bias_random_walk_variance` | Gyroscope-bias random-walk density squared |
+| `Qθθ` | `attitude_process_variance` | Process-noise contribution to attitude variance |
+| `Qθb` | `attitude_bias_process_covariance` | Process-noise contribution to attitude/bias cross covariance |
+| `Qbb` | `bias_process_variance` | Process-noise contribution to gyro-bias variance |
+| `Qd` | Added directly into `predicted_covariance` | Complete discrete process-noise matrix; it is not stored as a separate array |
+
+The initial covariance standard deviations come from:
+
+| Mathematical value | Configuration variable |
+|---|---|
+| `σθx`, `σθy`, `σθz` | `config.initial_attitude_std_rad.x/y/z` |
+| `σbx`, `σby`, `σbz` | `config.initial_gyro_bias_std_rad_s.x/y/z` |
+
+These standard deviations are squared before being placed on the initial covariance diagonal.
+
+#### Accelerometer Measurement Variables
+
+| Symbol | Variable in code | Real name and meaning |
+|---|---|---|
+| `ab` | `acceleration_body_m_s2` | Measured body-frame acceleration in meters per second squared |
+| `||ab||` | `acceleration_magnitude` | Magnitude of the measured acceleration vector |
+| `z` | `measured_direction` | Normalized measured acceleration direction |
+| `ĝw` | `gravity_world` | Unit gravity-reference direction in the world frame |
+| `ĝb` | `predicted_direction` | Predicted gravity direction in the body frame |
+| `||ĝb||` | `predicted_direction_magnitude` | Magnitude used to normalize the predicted gravity direction |
+| `r` | `residual[3]` | Difference between measured and predicted gravity directions |
+| `H` | `measurement_jacobian` | `3 × 6` accelerometer measurement Jacobian |
+| `R` | `measurement_variance` on the `3 × 3` diagonal | Accelerometer direction-measurement noise covariance |
+| `σa` | `filter->config.accelerometer_direction_std` | One-sigma uncertainty of each normalized accelerometer-direction component |
+| `σ²a` | `measurement_variance` | Accelerometer direction variance |
+| `g` | `filter->config.gravity_magnitude_m_s2` | Expected local gravitational acceleration magnitude |
+| magnitude tolerance | `filter->config.accelerometer_magnitude_tolerance_m_s2` | Maximum allowed difference between measured acceleration magnitude and gravity |
+
+#### Innovation and Kalman-Gain Variables
+
+| Symbol | Variable in code | Real name and meaning |
+|---|---|---|
+| `PHᵀ` | `covariance_measurement_cross` | State-to-measurement cross covariance |
+| `S` | `innovation_covariance` | `3 × 3` innovation covariance |
+| `S⁻¹` | `inverse_innovation_covariance` | Inverse innovation covariance |
+| `NIS` | `normalized_innovation_squared` | Normalized innovation squared used to reject inconsistent measurements |
+| NIS gate | `filter->config.accelerometer_innovation_gate` | Maximum accepted normalized innovation squared |
+| `K` | `kalman_gain` | `6 × 3` Kalman gain |
+| `K r` | `error_state` | Estimated six-state correction |
+
+#### Joseph Update and Reset Variables
+
+| Symbol | Variable in code | Real name and meaning |
+|---|---|---|
+| `A = I₆ - KH` | `identity_minus_gain_jacobian` | Joseph-update transformation matrix |
+| `A P⁻` | `intermediate_covariance` | Intermediate covariance multiplication |
+| `PJ` | `joseph_covariance` | Covariance after the Joseph-form measurement update |
+| `Greset` | `reset_jacobian` | MEKF reset Jacobian after attitude-error injection |
+| `Greset PJ` | `reset_intermediate_covariance` | Intermediate reset covariance multiplication |
+| `P⁺` | `corrected_covariance` | Final corrected covariance after the reset transformation |
+| `½(P⁺ + P⁺ᵀ)` | Applied directly to `corrected_covariance` | Explicit covariance-symmetry restoration |
+
+Some mathematical matrices, including `Qd` and `R`, are not created as complete standalone arrays in the implementation. Their nonzero terms are calculated and added directly to the appropriate covariance or innovation-covariance entries.
+
 ### Complete MEKF Covariance Cycle
 
 The MEKF alternates between a gyroscope prediction and an accelerometer correction. Superscript `−` denotes a predicted value before measurement correction, while superscript `+` denotes a corrected value after an accepted measurement update.
