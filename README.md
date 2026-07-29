@@ -199,6 +199,299 @@ The nominal state contains:
 
 The `6 × 6` covariance represents uncertainty in the local attitude error and gyro-bias error, not uncertainty in the four quaternion components directly.
 
+### Complete MEKF Covariance Cycle
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 1. INITIAL COVARIANCE                                                     │
+│                                                                           │
+│ Error state:                                                              │
+│                                                                           │
+│        δx = [ δθx  δθy  δθz  δbx  δby  δbz ]ᵀ                            │
+│                                                                           │
+│ Initial covariance:                                                       │
+│                                                                           │
+│             ┌ σ²θx    0      0      0      0      0   ┐                   │
+│             │  0     σ²θy    0      0      0      0   │                   │
+│             │  0      0     σ²θz    0      0      0   │                   │
+│      P₀  =  │  0      0      0     σ²bx    0      0   │                   │
+│             │  0      0      0      0     σ²by    0   │                   │
+│             └  0      0      0      0      0     σ²bz ┘                   │
+│                                                                           │
+│             P₀ = diag(σ²θx, σ²θy, σ²θz, σ²bx, σ²by, σ²bz)                 │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 2. GYROSCOPE ATTITUDE PREDICTION                                         │
+│                                                                           │
+│ Correct the measured angular rate using the estimated gyro bias:          │
+│                                                                           │
+│             ω̂ = ωm - b̂g                                                  │
+│                                                                           │
+│ Integrate the corrected rate:                                             │
+│                                                                           │
+│             Δθ = ω̂ Δt                                                    │
+│                                                                           │
+│ Convert the incremental rotation into a quaternion:                       │
+│                                                                           │
+│             δq = [ cos(||Δθ||/2),                                         │
+│                    (Δθ/||Δθ||) sin(||Δθ||/2) ]                            │
+│                                                                           │
+│ Propagate the nominal body-to-world attitude:                             │
+│                                                                           │
+│             q⁻ = normalize(q⁺ ⊗ δq)                                       │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 3. STATE-TRANSITION MATRIX                                                │
+│                                                                           │
+│ First-order six-state transition matrix:                                  │
+│                                                                           │
+│                    ┌                         ┐                            │
+│                    │ I - [ω̂×]Δt      -IΔt  │                            │
+│             Φ  =   │                         │                            │
+│                    │     0              I    │                            │
+│                    └                         ┘                            │
+│                                                                           │
+│ Expanded attitude block:                                                  │
+│                                                                           │
+│                      ┌ 1       ω̂zΔt   -ω̂yΔt ┐                            │
+│   I - [ω̂×]Δt   =    │-ω̂zΔt   1        ω̂xΔt │                            │
+│                      └ ω̂yΔt  -ω̂xΔt    1     ┘                            │
+│                                                                           │
+│ Expanded six-state matrix:                                                │
+│                                                                           │
+│        ┌ 1       ω̂zΔt  -ω̂yΔt  -Δt    0      0   ┐                       │
+│        │-ω̂zΔt   1       ω̂xΔt    0    -Δt     0   │                       │
+│        │ ω̂yΔt  -ω̂xΔt   1        0     0     -Δt  │                       │
+│  Φ  =  │ 0       0       0        1     0      0   │                       │
+│        │ 0       0       0        0     1      0   │                       │
+│        └ 0       0       0        0     0      1   ┘                       │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 4. DISCRETE PROCESS-NOISE MATRIX                                          │
+│                                                                           │
+│ Gyroscope white-noise variance:                                           │
+│                                                                           │
+│             σ²g = gyro_noise_density²                                     │
+│                                                                           │
+│ Gyro-bias random-walk variance:                                           │
+│                                                                           │
+│             σ²b = bias_random_walk_density²                               │
+│                                                                           │
+│ Process-noise terms:                                                      │
+│                                                                           │
+│             Qθθ = σ²g Δt + σ²b Δt³/3                                     │
+│             Qθb = -σ²b Δt²/2                                              │
+│             Qbb = σ²b Δt                                                  │
+│                                                                           │
+│ Discrete process-noise matrix:                                            │
+│                                                                           │
+│                     ┌                         ┐                           │
+│                     │ Qθθ I          Qθb I    │                           │
+│              Qd  =  │                         │                           │
+│                     │ Qθb I          Qbb I    │                           │
+│                     └                         ┘                           │
+│                                                                           │
+│ Expanded form:                                                            │
+│                                                                           │
+│       ┌ Qθθ   0     0     Qθb   0     0   ┐                              │
+│       │ 0     Qθθ   0     0     Qθb   0   │                              │
+│       │ 0     0     Qθθ   0     0     Qθb │                              │
+│ Qd =  │ Qθb   0     0     Qbb   0     0   │                              │
+│       │ 0     Qθb   0     0     Qbb   0   │                              │
+│       └ 0     0     Qθb   0     0     Qbb ┘                              │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 5. COVARIANCE PREDICTION                                                  │
+│                                                                           │
+│             P⁻ = Φ P⁺ Φᵀ + Qd                                             │
+│                                                                           │
+│ Block interpretation:                                                     │
+│                                                                           │
+│                      ┌                         ┐                           │
+│                      │ Pθθ⁻             Pθb⁻  │                           │
+│              P⁻  =   │                         │                           │
+│                      │ Pbθ⁻             Pbb⁻  │                           │
+│                      └                         ┘                           │
+│                                                                           │
+│ Pθθ⁻ = predicted attitude-error covariance                                │
+│ Pbb⁻ = predicted gyro-bias covariance                                     │
+│ Pθb⁻ = predicted attitude/bias cross covariance                           │
+│ Pbθ⁻ = transpose(Pθb⁻)                                                     │
+│                                                                           │
+│ The -IΔt block in Φ causes gyro-bias uncertainty to propagate into        │
+│ attitude uncertainty.                                                     │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 6. ACCELEROMETER MEASUREMENT MODEL                                        │
+│                                                                           │
+│ Normalize the measured acceleration:                                      │
+│                                                                           │
+│             z = ab / ||ab||                                               │
+│                                                                           │
+│ Predict gravity in the body frame:                                        │
+│                                                                           │
+│             ĝb = rotate_world_to_body(q⁻, ĝw)                             │
+│                                                                           │
+│ Measurement residual:                                                     │
+│                                                                           │
+│             r = z - ĝb                                                    │
+│                                                                           │
+│ Right-multiplicative measurement Jacobian:                                │
+│                                                                           │
+│                    ┌                         ┐                            │
+│             H  =   │ [ĝb×]          0₃×₃   │                            │
+│                    └                         ┘                            │
+│                                                                           │
+│ Expanded H matrix:                                                        │
+│                                                                           │
+│        ┌  0      -ĝz      ĝy      0   0   0  ┐                            │
+│ H  =   │  ĝz      0      -ĝx      0   0   0  │                            │
+│        └ -ĝy      ĝx      0       0   0   0  ┘                            │
+│                                                                           │
+│ Accelerometer direction-noise matrix:                                     │
+│                                                                           │
+│             R = σ²a I₃                                                    │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 7. INNOVATION COVARIANCE AND GATING                                       │
+│                                                                           │
+│ Innovation covariance:                                                    │
+│                                                                           │
+│             S = H P⁻ Hᵀ + R                                               │
+│                                                                           │
+│ Normalized innovation squared:                                            │
+│                                                                           │
+│             NIS = rᵀ S⁻¹ r                                                │
+│                                                                           │
+│ Accept the accelerometer update only when:                                │
+│                                                                           │
+│             | ||ab|| - g | ≤ magnitude tolerance                         │
+│                                                                           │
+│                         and                                               │
+│                                                                           │
+│             NIS ≤ configured innovation gate                              │
+│                                                                           │
+│ Rejected measurements leave q, b̂g, and P unchanged.                      │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 8. KALMAN GAIN AND ERROR-STATE CORRECTION                                 │
+│                                                                           │
+│ Kalman gain:                                                              │
+│                                                                           │
+│             K = P⁻ Hᵀ S⁻¹                                                 │
+│                                                                           │
+│ Matrix dimensions:                                                        │
+│                                                                           │
+│             P⁻     = 6 × 6                                                │
+│             Hᵀ     = 6 × 3                                                │
+│             S⁻¹    = 3 × 3                                                │
+│             K      = 6 × 3                                                │
+│                                                                           │
+│ Estimated error state:                                                    │
+│                                                                           │
+│                     ┌ δθ̂ ┐                                               │
+│             δx̂ = Kr = │    │                                             │
+│                     └ δb̂ ┘                                               │
+│                                                                           │
+│ Expanded correction vector:                                               │
+│                                                                           │
+│             δx̂ = [δθ̂x δθ̂y δθ̂z δb̂x δb̂y δb̂z]ᵀ                        │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 9. NOMINAL-STATE INJECTION                                                │
+│                                                                           │
+│ Convert the estimated small-angle attitude error to a quaternion:         │
+│                                                                           │
+│             δq̂ ≈ normalize([1, ½δθ̂x, ½δθ̂y, ½δθ̂z])                     │
+│                                                                           │
+│ Correct the nominal attitude:                                             │
+│                                                                           │
+│             q⁺ = normalize(q⁻ ⊗ δq̂)                                      │
+│                                                                           │
+│ Correct the nominal gyro-bias estimate:                                   │
+│                                                                           │
+│             b̂g⁺ = b̂g⁻ + δb̂                                             │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 10. JOSEPH COVARIANCE UPDATE                                              │
+│                                                                           │
+│             A = I₆ - KH                                                   │
+│                                                                           │
+│ Joseph-form update:                                                       │
+│                                                                           │
+│             PJ = A P⁻ Aᵀ + K R Kᵀ                                        │
+│                                                                           │
+│ Matrix dimensions:                                                        │
+│                                                                           │
+│             I₆, A, P⁻, PJ = 6 × 6                                        │
+│             K             = 6 × 3                                        │
+│             H             = 3 × 6                                        │
+│             R             = 3 × 3                                        │
+│                                                                           │
+│ The Joseph form helps preserve covariance symmetry and positive           │
+│ semidefiniteness under floating-point arithmetic.                         │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 11. MEKF RESET                                                            │
+│                                                                           │
+│ After injecting δθ̂ into the nominal quaternion, reset the local attitude │
+│ error coordinates using the reset Jacobian:                               │
+│                                                                           │
+│                        ┌                         ┐                         │
+│                        │ I - ½[δθ̂×]       0    │                         │
+│             Greset  =  │                         │                         │
+│                        │      0             I    │                         │
+│                        └                         ┘                         │
+│                                                                           │
+│ Reset the covariance:                                                     │
+│                                                                           │
+│             P⁺ = Greset PJ Gresetᵀ                                        │
+│                                                                           │
+│ Restore numerical symmetry:                                               │
+│                                                                           │
+│             P⁺ = ½(P⁺ + P⁺ᵀ)                                             │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 12. CORRECTED MEKF STATE                                                  │
+│                                                                           │
+│ Nominal state:                                                            │
+│                                                                           │
+│             q⁺                                                            │
+│             b̂g⁺                                                          │
+│                                                                           │
+│ Corrected covariance:                                                     │
+│                                                                           │
+│                      ┌                         ┐                           │
+│                      │ Pθθ⁺             Pθb⁺  │                           │
+│              P⁺  =   │                         │                           │
+│                      │ Pbθ⁺             Pbb⁺  │                           │
+│                      └                         ┘                           │
+│                                                                           │
+│ The corrected state and covariance become the inputs to the next gyro     │
+│ prediction cycle.                                                         │
+└───────────────────────────────────┬───────────────────────────────────────┘
+                                    │
+                                    └──────────────► next timestep
 ### MEKF Prediction
 
 Implemented prediction capabilities:
