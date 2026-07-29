@@ -40,6 +40,7 @@ Control                           ░░░░░░░░░░  Planned
 
 ```text
 Hardware Sensors
+(IMU, Magnetometer, Barometer, GPS)
       │
       ▼
 Platform Drivers
@@ -134,7 +135,7 @@ Pure inertial integration will drift over time. GPS, barometer, and other correc
 
 ## Mahony Attitude Filter
 
-The Mahony filter is the current baseline attitude estimator.
+The Mahony filter is one of the attitude estimators.
 
 Implemented capabilities:
 
