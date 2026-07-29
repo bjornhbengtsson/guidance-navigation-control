@@ -7,6 +7,14 @@ This repository builds on publicly shareable work developed for Sun Devil Rocket
 ## Current Progress
 
 ```text
+IMU architecture and selection     ██████████  Complete
+BMI270/BMM150 driver path          ██████████  Complete
+Interrupt-driven sensor updates    ██████████  ~446 Hz achieved
+Raw sensor conversion and units    ██████████  Complete
+IMU axis and frame handling        ████████░░  Hardware validation ongoing
+Euler-to-quaternion utilities      ██████████  Complete
+Quaternion sensor-state pipeline   ██████████  Complete
+
 Quaternion and frame math         ██████████  Complete
 Gravity compensation              ██████████  Complete
 World-frame velocity foundation   ███████░░░  Validation ongoing
@@ -20,7 +28,7 @@ MEKF attitude prediction          ██████████  Complete
 MEKF covariance prediction        ██████████  Complete
 MEKF accelerometer correction     ██████████  Complete
 MEKF unit tests                   ██████████  722 passes
-MEKF hardware integration         ░░░░░░░░░░  Not started
+MEKF hardware integration         ░░░░░░░░░░  Planned
 
 Magnetometer fusion               ░░░░░░░░░░  Calibration required first
 Navigation fusion                 █░░░░░░░░░  Early foundation
