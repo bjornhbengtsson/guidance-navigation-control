@@ -1,6 +1,6 @@
 # Guidance, Navigation, and Control Workspace Master Plan
 
-**Document version:** 2.1  
+**Document version:** 2.3  
 **Status:** Living engineering blueprint  
 **Last updated:** July 27, 2026  
 **Primary repository:** `guidance-navigation-control`  
@@ -43,6 +43,55 @@ The following comments are intentionally included so ChatGPT or a simple script 
 <!-- GNC_STATUS_END -->
 
 <!-- GNC_NEXT_ACTIONS_BEGIN -->
+
+## Active Milestone: Review, Commit, and Integrate the MEKF Accelerometer Update
+
+The current implementation now includes:
+
+1. Accelerometer configuration validation.
+2. Gravity-magnitude gating.
+3. Normalized measured and predicted gravity directions.
+4. Right-multiplicative gravity measurement Jacobian.
+5. State-to-measurement cross covariance.
+6. Innovation covariance and guarded `3 × 3` inversion.
+7. Normalized innovation squared gating.
+8. Six-state Kalman gain.
+9. Small-angle multiplicative quaternion correction.
+10. Gyro-bias correction through attitude/bias cross-covariance.
+11. Joseph-form covariance update.
+12. MEKF reset Jacobian application.
+13. Covariance symmetry restoration.
+14. Transactional state commit.
+15. A recorded result of 722 passes and 0 failures.
+
+### Immediate Repository Actions
+
+1. Confirm the branch and working tree.
+2. Run the MEKF suite again locally.
+3. Run math and Mahony regressions.
+4. Review `mekf.c`, `mekf.h`, `test_mekf.c`, and any build-file changes.
+5. Commit the accelerometer-update milestone.
+6. Push the feature branch.
+7. Copy or port the updated MEKF into the personal GNC repository.
+8. Update the GNC README status and evidence.
+
+### Next Algorithm Milestone
+
+Do not immediately add a magnetometer update.
+
+First complete magnetometer readiness:
+
+- verify BMM150 compensated output
+- verify sensor-to-body axis mapping
+- implement hard-iron calibration
+- implement soft-iron calibration
+- characterize current-induced magnetic interference
+- define the expected world magnetic-field direction
+- create synthetic and recorded magnetometer datasets
+- define magnitude and innovation gates
+
+After those prerequisites, design the MEKF magnetometer measurement update.
+
 <!-- GNC_NEXT_ACTIONS_END -->
 
 <!-- GNC_EVIDENCE_BEGIN -->
@@ -154,10 +203,10 @@ Mahony implementation                ██████████ 100%
 Mahony host unit tests               ██████████ 100%
 Mahony SDR integration               ██████████ 100%
 Mahony hardware validation           ██░░░░░░░░  20%
-MEKF interface and initialization    ██████░░░░  60%
-MEKF quaternion prediction           ██░░░░░░░░  20%
-MEKF covariance prediction           ██░░░░░░░░  20%
-MEKF accelerometer update            ░░░░░░░░░░   0%
+MEKF interface and initialization    ██████████ 100%
+MEKF quaternion prediction           ██████████ 100%
+MEKF covariance prediction           ██████████ 100%
+MEKF accelerometer update            ██████████ 100%
 MEKF magnetometer update             ░░░░░░░░░░   0%
 Recorded-data playback               ░░░░░░░░░░   0%
 Navigation fusion                    █░░░░░░░░░  10%
@@ -177,7 +226,7 @@ Flight validation                    ░░░░░░░░░░   0%
 | Gravity compensation | Complete in SDR branch | Rotate world gravity to body, subtract, rotate linear acceleration to world, integrate velocity | Replay and hardware validation |
 | Mahony | Complete for current IMU scope | Gyro propagation, proportional accel correction, integral correction, anti-windup, validity gating | Hardware logging and tuning |
 | Mahony integration | Complete in source | `sensor_body_state()` → `mahony_update_imu()` → `state_estimate->attitude` | Confirm timing and behavior on Rev 2 |
-| MEKF | Started | 6-state design, header and initialization checkpoint | Implement and test `mekf_predict()` |
+| MEKF attitude filter | Prediction and accelerometer update implemented | Six-state nominal attitude and gyro-bias filter with covariance prediction, gravity-direction correction, NIS gating, Joseph update, and multiplicative reset | Review, commit, integrate, and begin magnetometer-readiness work |
 | Magnetometer fusion | Deferred | BMM150 conversion path exists, calibration not flight-qualified | Axis mapping, calibration, interference testing |
 | Navigation | Early foundation | Gravity-compensated velocity integration | Timestamp validation, replay, GPS/barometer fusion |
 | Guidance | Planned | Interfaces only | Define first mission use case |
@@ -191,8 +240,8 @@ flowchart LR
     B --> C[Mahony IMU Filter<br/>Baseline Complete]
     C --> D[MEKF Initialization<br/>Started]
     D --> E[MEKF Gyro + Covariance Prediction]
-    E --> F[Accelerometer Update]
-    F --> G[Magnetometer Update]
+    E --> F[Accelerometer Update<br/>Complete]
+    F --> G[Magnetometer Update<br/>Next]
     G --> H[Replay and Hardware Comparison]
     H --> I[Navigation Fusion]
 ```
@@ -204,7 +253,7 @@ flowchart LR
 | Gravity compensation | `feature/gravity-compensated-acceleration` | Quaternion rotations, gravity compensation, world-frame velocity work completed; PR #138 was awaiting review |
 | Mahony | `feature/mahony-attitude-filter` | Implemented and integrated; PR intentionally delayed pending hardware testing |
 | Mahony sensor integration | Commit `eaa16ed` | `sensor/sensor.c` changed to use the Mahony filter as the live attitude estimator |
-| MEKF | `feature/mekf-attitude-filter` | Checkpoint recorded at commit `acab7f4`; shared vector type prerequisite committed, header and initialization started; prediction/tests not yet complete |
+| MEKF | `feature/mekf-attitude-filter` | Prediction and accelerometer correction are implemented, including magnitude and NIS gates, Joseph covariance update, multiplicative reset, bias correction, and 722 passing tests |
 
 <!-- GNC_STATUS_END -->
 
@@ -214,45 +263,53 @@ flowchart LR
 
 <!-- GNC_NEXT_ACTIONS_BEGIN -->
 
-## Active Milestone: MEKF Prediction Foundation
+## Active Milestone: Review, Commit, and Integrate the MEKF Accelerometer Update
 
-The next engineering task should remain narrow:
+The current implementation now includes:
 
-1. Inspect the current `mekf/mekf.h` and `mekf/mekf.c`.
-2. Preserve the Milestone 1 API scope:
-   - nominal body-to-world quaternion
-   - three-axis gyro bias
-   - `6 × 6` covariance
-   - `MEKF_CONFIG`
-   - `mekf_init()`
-   - `mekf_predict()`
-3. Implement bias-corrected gyro propagation.
-4. Normalize the nominal quaternion after propagation.
-5. Implement the `6 × 6` state-transition and covariance prediction.
-6. Add the first MEKF test target.
-7. Validate initialization before testing dynamic propagation.
-8. Add constant-rate propagation tests.
-9. Add zero-rate and zero-bias tests.
-10. Add covariance symmetry, finite-value, and diagonal nonnegativity checks.
+1. Accelerometer configuration validation.
+2. Gravity-magnitude gating.
+3. Normalized measured and predicted gravity directions.
+4. Right-multiplicative gravity measurement Jacobian.
+5. State-to-measurement cross covariance.
+6. Innovation covariance and guarded `3 × 3` inversion.
+7. Normalized innovation squared gating.
+8. Six-state Kalman gain.
+9. Small-angle multiplicative quaternion correction.
+10. Gyro-bias correction through attitude/bias cross-covariance.
+11. Joseph-form covariance update.
+12. MEKF reset Jacobian application.
+13. Covariance symmetry restoration.
+14. Transactional state commit.
+15. A recorded result of 722 passes and 0 failures.
 
-Do **not** add accelerometer APIs, magnetometer APIs, GPS, barometer, velocity, or position during this milestone.
+### Immediate Repository Actions
 
-## Parallel Low-Risk Task
+1. Confirm the branch and working tree.
+2. Run the MEKF suite again locally.
+3. Run math and Mahony regressions.
+4. Review `mekf.c`, `mekf.h`, `test_mekf.c`, and any build-file changes.
+5. Commit the accelerometer-update milestone.
+6. Push the feature branch.
+7. Copy or port the updated MEKF into the personal GNC repository.
+8. Update the GNC README status and evidence.
 
-Create the initial portable workspace and import the already completed math and Mahony code as reference material without changing their behavior.
+### Next Algorithm Milestone
 
-## Hardware Validation Task
+Do not immediately add a magnetometer update.
 
-Before opening the Mahony PR:
+First complete magnetometer readiness:
 
-- Confirm attitude updates on Rev 2 hardware.
-- Record actual update interval statistics.
-- Log quaternion norm.
-- Log accelerometer correction enabled/disabled state.
-- Check stationary convergence.
-- Check controlled rotations.
-- Confirm no NaN or discontinuity after startup.
-- Compare gyro-only and acceleration-corrected behavior under known motions.
+- verify BMM150 compensated output
+- verify sensor-to-body axis mapping
+- implement hard-iron calibration
+- implement soft-iron calibration
+- characterize current-induced magnetic interference
+- define the expected world magnetic-field direction
+- create synthetic and recorded magnetometer datasets
+- define magnitude and innovation gates
+
+After those prerequisites, design the MEKF magnetometer measurement update.
 
 <!-- GNC_NEXT_ACTIONS_END -->
 
@@ -1365,15 +1422,17 @@ Mahony remains available for:
 Recorded state:
 
 - Branch: `feature/mekf-attitude-filter`
-- Checkpoint commit: `acab7f4`
+- Original checkpoint commit: `acab7f4`
 - Shared `VECTOR_3F` moved into the math module as a prerequisite
-- `mekf/mekf.h` created
-- `mekf/mekf.c` initialization started
-- Prediction not yet completed
-- MEKF tests not yet started
-- User intentionally stopped after committing the current checkpoint
+- `mekf/mekf.h` defines the six-state right-multiplicative MEKF
+- `mekf_init()` validates configuration and initializes nominal state and covariance
+- `mekf_predict()` now propagates nominal attitude and the full covariance
+- Gyro white noise and bias random walk are discretized into the covariance
+- Covariance symmetry is explicitly restored after prediction
+- The prediction commits attitude and covariance only after successful calculation
+- MEKF initialization and prediction tests are now present
 
-## Milestone 1 Scope
+## Milestone 1 Scope — Implemented
 
 Expose only implemented APIs.
 
@@ -1579,7 +1638,7 @@ P \leftarrow \frac{1}{2}(P + P^T)
 
 This should be treated as numerical cleanup, not a substitute for correct equations.
 
-## MEKF Prediction Test Plan
+## MEKF Prediction Test Coverage
 
 ### Initialization
 
@@ -1618,9 +1677,9 @@ This should be treated as numerical cleanup, not a substitute for correct equati
 
 - With zero covariance effects and zero bias, nominal quaternion prediction should match Mahony gyro-only propagation within tolerance.
 
-## Accelerometer Measurement Update — Future Milestone
+## Accelerometer Measurement Update — Implemented
 
-The accelerometer will provide a gravity-direction observation only under valid low-dynamic conditions.
+The accelerometer provides a normalized gravity-direction observation under valid low-dynamic conditions.
 
 Normalized measured direction:
 
@@ -1668,6 +1727,57 @@ The update sequence:
 10. Reset error state.
 11. Apply covariance update and reset Jacobian if required.
 12. Normalize quaternion.
+
+
+### Implemented Configuration
+
+```c
+float accelerometer_direction_std;
+float gravity_magnitude_m_s2;
+float accelerometer_magnitude_tolerance_m_s2;
+float accelerometer_innovation_gate;
+```
+
+### Implemented Numerical Sequence
+
+```text
+validate filter and measurement
+        ↓
+gate measured magnitude around configured gravity
+        ↓
+normalize measured acceleration
+        ↓
+rotate world gravity into the body frame
+        ↓
+normalize predicted gravity
+        ↓
+form residual and measurement Jacobian
+        ↓
+compute S and invert the 3×3 innovation covariance
+        ↓
+apply NIS gate
+        ↓
+compute Kalman gain and six-state correction
+        ↓
+right-multiply quaternion correction
+        ↓
+correct gyro bias
+        ↓
+Joseph covariance update
+        ↓
+MEKF reset covariance transformation
+        ↓
+symmetrize and commit
+```
+
+### Implemented Safety Behavior
+
+- Null, non-finite, and zero-magnitude acceleration is rejected.
+- Measurements outside the gravity-magnitude tolerance are rejected.
+- Large gravity-direction disagreement is rejected by NIS.
+- Singular or non-finite innovation covariance is rejected.
+- Rejected or failed updates preserve attitude, bias, and covariance.
+- Gravity does not falsely claim yaw observability.
 
 ## Magnetometer Measurement Update — Future Milestone
 
@@ -3142,9 +3252,9 @@ Exit criteria:
 | Mahony gyro propagation | M3–M4 | Extensive tests |
 | Mahony accelerometer correction | M3–M4 | Convergence/gating tests |
 | Mahony SDR integration | M3 | Integrated in source; hardware evidence pending |
-| MEKF initialization | M2 | Initial code checkpoint |
-| MEKF prediction | M1–M2 | Design defined; implementation incomplete |
-| MEKF accelerometer update | M1 | Design only |
+| MEKF initialization | M3 | Implemented with validation and unit tests |
+| MEKF prediction | M3–M4 | Nominal attitude and covariance prediction implemented with synthetic unit tests |
+| MEKF accelerometer update | M3–M4 | Implemented with gating, Joseph covariance update, reset, bias coupling, and synthetic unit tests |
 | Magnetometer update | M0–M1 | Deferred pending calibration |
 | GPS/barometer fusion | M0–M1 | Architecture only |
 | Guidance | M0 | Planned |
@@ -3308,7 +3418,13 @@ Only include legally shareable reference notes and links. Do not commit unauthor
 | 2026-07-26 | Math regression | Recorded `math_sdr` suite | **26 passes, 0 failures** |
 | 2026-07-26 | Mahony integration | `sensor_body_state()` uses microsecond timing, converts gyro to rad/s, gates accel correction, stores body-to-world quaternion | Source integrated |
 | 2026-07-26 | Mahony branch readiness | Software work considered complete for current scope | PR delayed for hardware test |
-| 2026-07-27 | MEKF checkpoint | Branch `feature/mekf-attitude-filter`, commit `acab7f4` | Header/init checkpoint; prediction/tests pending |
+| 2026-07-27 | MEKF checkpoint | Branch `feature/mekf-attitude-filter`, commit `acab7f4` | Shared vector, header, and initialization checkpoint |
+| 2026-07-28 | MEKF nominal prediction | Bias-corrected rotation-vector propagation and right-multiplied incremental quaternion | Implemented |
+| 2026-07-28 | MEKF covariance prediction | Six-state transition, `Phi P Phi^T`, discrete process noise, and symmetry restoration | Implemented |
+| 2026-07-28 | MEKF prediction tests | Initialization, zero rate, positive yaw, bias subtraction, covariance coupling, process noise, invalid timestep, and rotating covariance | Latest recorded aggregate: 423 passes, 0 failures |
+| 2026-07-28 | MEKF accelerometer configuration | Direction uncertainty, gravity magnitude, magnitude tolerance, and innovation gate added and validated | Implemented |
+| 2026-07-28 | MEKF accelerometer update | Gravity-direction residual, Jacobian, Kalman gain, attitude and bias injection, Joseph covariance update, and reset | Implemented |
+| 2026-07-28 | MEKF accelerometer tests | Aligned gravity, tilt correction, dynamic rejection, covariance update, bias coupling, invalid input, and large-direction rejection | **722 passes, 0 failures** |
 
 ## Evidence to Add Next
 
@@ -3470,6 +3586,26 @@ flowchart LR
 # Change Log
 
 <!-- GNC_CHANGELOG_BEGIN -->
+
+## Version 2.3 — July 28, 2026
+
+- Updated the MEKF from prediction-only to a complete accelerometer-corrected attitude milestone.
+- Recorded accelerometer-direction uncertainty, gravity magnitude, magnitude tolerance, and NIS gate configuration.
+- Recorded normalized gravity residuals and the right-multiplicative measurement Jacobian.
+- Recorded innovation covariance inversion, NIS rejection, Kalman gain, quaternion injection, and gyro-bias correction.
+- Recorded Joseph-form covariance update, MEKF reset covariance transformation, symmetry restoration, and transactional commit.
+- Recorded accelerometer tests for aligned gravity, tilt convergence, dynamic rejection, covariance reduction, bias coupling, invalid input, and large direction errors.
+- Recorded the latest MEKF result: 722 passes and 0 failures.
+- Changed the next milestone from accelerometer design to integration, repeated-sequence validation, and magnetometer readiness.
+
+## Version 2.2 — July 28, 2026
+
+- Updated MEKF status from initialization-only to completed nominal and covariance prediction.
+- Recorded bias-corrected gyro propagation and incremental quaternion construction.
+- Recorded the six-state transition matrix, covariance propagation, process noise, and symmetry restoration.
+- Recorded the expanded initialization and prediction test suite.
+- Updated progress bars, maturity, evidence, and immediate actions.
+- Set the accelerometer measurement update as the next MEKF milestone.
 
 ## Version 2.1 — July 27, 2026
 
@@ -3677,9 +3813,11 @@ Mahony SDR integration
 20,141 passing Mahony tests
 
 NEXT:
-MEKF quaternion and covariance prediction
-MEKF initialization/prediction tests
-Mahony Rev 2 hardware validation
+Review, commit, and push the MEKF accelerometer update
+Port the complete MEKF attitude milestone into the personal GNC repository
+Validate predict/update behavior with repeated synthetic sequences
+Prepare magnetometer calibration and interference testing
+Mahony and MEKF Rev 2 hardware validation
 
 ARCHITECTURAL RULE:
 Hardware → Adapter → Portable GNC → Generic Output → Adapter
