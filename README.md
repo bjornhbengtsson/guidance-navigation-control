@@ -992,6 +992,13 @@ The long-term goal is to build a reusable engineering platform combining:
 
 The repository should remain organized around stable GNC interfaces rather than a single board, mission, or estimator.
 
+## References
+
+[https://www.youtube.com/watch?v=HCd-leV8OkU](https://youtu.be/HCd-leV8OkU?si=oARk4EeI9B4km_FT)
+https://youtu.be/FgwVju8PcFw?si=FOw-ikYcchgaehLh
+https://www.anuncommonlab.com/articles/how-kalman-filters-work/
+
+
 ## License
 
 This repository is licensed under the BSD 3-Clause License.
