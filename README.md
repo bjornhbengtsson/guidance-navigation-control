@@ -994,8 +994,10 @@ The repository should remain organized around stable GNC interfaces rather than 
 
 ## References
 
-[https://www.youtube.com/watch?v=HCd-leV8OkU](https://youtu.be/HCd-leV8OkU?si=oARk4EeI9B4km_FT)
+https://www.youtube.com/watch?v=HCd-leV8OkU&list=PLUeHTafWecAVRogm-cRiYfydRMFUpqJok
+
 https://youtu.be/FgwVju8PcFw?si=FOw-ikYcchgaehLh
+
 https://www.anuncommonlab.com/articles/how-kalman-filters-work/
 
 
