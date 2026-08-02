@@ -40,7 +40,7 @@ Control                           ░░░░░░░░░░  Planned
 
 ```text
 Hardware Sensors
-(IMU, Magnetometer, Barometer, GPS)
+(IMU, Magnetometer)
       │
       ▼
 Platform Drivers
