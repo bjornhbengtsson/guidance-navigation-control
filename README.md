@@ -85,7 +85,7 @@ Simulation, recorded-data playback, and automated tests connect to the same port
 * Body-to-world vector rotation
 * World-to-body vector rotation
 * Quaternion ordering: `[w, x, y, z]`
-* Stored attitude convention: body-to-world (currently incorrect and needs to be changed all throughout to world-to-body. the changes are already made upstream with SDR)
+* Stored attitude convention: body-to-world (currently incorrect and needs to be changed all throughout to world-to-body. the changes are already made upstream with SDR for the Mahony filter, but not yet for the MEKF)
 
 Body-to-world rotation:
 
