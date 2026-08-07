@@ -85,7 +85,7 @@ Simulation, recorded-data playback, and automated tests connect to the same port
 * Body-to-world vector rotation
 * World-to-body vector rotation
 * Quaternion ordering: `[w, x, y, z]`
-* Stored attitude convention: body-to-world (currently in hardware testing and research to confirm the convention whether body-to-world or world-to-body.)
+* Stored attitude convention: body-to-world
 
 Body-to-world rotation:
 
