@@ -36,6 +36,15 @@ Guidance                          ░░░░░░░░░░  Planned
 Control                           ░░░░░░░░░░  Planned
 ```
 
+## Currently Working On
+
+* Add `MAHONY_STATUS` enum for specific error returns
+* Handle Mahony init/update failures instead of ignoring return values
+* Initialize Mahony before prelaunch/dashboard use
+* Clean up Mahony tests and reduce excessive assertions
+* Apply minor formatting, identity quaternion, and Makefile review changes
+
+
 ## Architecture
 
 ```text
