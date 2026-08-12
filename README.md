@@ -29,6 +29,7 @@ MEKF covariance prediction        ██████████  Complete
 MEKF accelerometer correction     ██████████  Complete
 MEKF unit tests                   ██████████  722 passes
 MEKF hardware integration         ░░░░░░░░░░  Planned
+*working on monte carlo simulation
 
 Magnetometer fusion               ░░░░░░░░░░  Calibration required first
 Navigation fusion                 █░░░░░░░░░  Early foundation
