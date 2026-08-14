@@ -19,7 +19,7 @@ Quaternion and frame math         ██████████  Complete
 Gravity compensation              ██████████  Complete
 World-frame velocity foundation   ███████░░░  Validation ongoing
 
-Mahony attitude filter            ██████████  Complete (need to update from upstream SDR new revisions)
+Mahony attitude filter            ██████████  Complete (need to update from upstream SDR new revisions (enum, const, style edits, etc..) https://github.com/SunDevilRocketry/mod/pull/142
 Mahony unit tests                 ██████████  20,141 passes
 Mahony hardware validation        ██░░░░░░░░  In progress
 
